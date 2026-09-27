@@ -6,6 +6,7 @@ import com.microservices.pro.orderservice.dto.OrderRequest;
 import com.microservices.pro.orderservice.dto.OrderResponse;
 import com.microservices.pro.orderservice.dto.StockCheckResponse;
 import feign.FeignException;
+import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 @Service
@@ -105,7 +107,7 @@ public class OrderService {
 
     public CompletableFuture<OrderResponse> bulkheadFallback(
             OrderRequest request,
-            Throwable ex
+            BulkheadFullException ex
     ) {
         log.warn(
                 "[BULKHEAD] Concurrent limit reached. Reason: {}",
@@ -122,7 +124,7 @@ public class OrderService {
 
     public CompletableFuture<OrderResponse> timeoutFallback(
             OrderRequest request,
-            Throwable ex
+            TimeoutException ex
     ) {
         log.warn(
                 "[TIMEOUT] Payment took too long. Reason: {}",
