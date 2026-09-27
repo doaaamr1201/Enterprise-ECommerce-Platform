@@ -1,11 +1,13 @@
 package com.microservices.pro.orderservice.contract;
 
 import au.com.dius.pact.consumer.MockServer;
-import au.com.dius.pact.consumer.PactDslWithProvider;
+import au.com.dius.pact.consumer.dsl.PactDslWithProvider;
 import au.com.dius.pact.consumer.dsl.LambdaDsl;
 import au.com.dius.pact.consumer.junit5.PactConsumerTestExt;
 import au.com.dius.pact.consumer.junit5.PactTestFor;
+import au.com.dius.pact.core.model.PactSpecVersion;
 import au.com.dius.pact.core.model.RequestResponsePact;
+import au.com.dius.pact.core.model.annotations.Pact;
 import com.microservices.pro.orderservice.client.InventoryClient;
 import com.microservices.pro.orderservice.dto.StockCheckResponse;
 import feign.Contract;
@@ -18,10 +20,10 @@ import org.springframework.cloud.openfeign.support.SpringMvcContract;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(PactConsumerTestExt.class)
-@PactTestFor(providerName = "inventory-service", port = "8888")
+@PactTestFor(providerName = "inventory-service", port = "8888", pactVersion = PactSpecVersion.V3)
 class OrderServiceInventoryContractTest {
 
-    @au.com.dius.pact.consumer.junit5.Pact(consumer = "order-service", provider = "inventory-service")
+    @Pact(consumer = "order-service", provider = "inventory-service")
     RequestResponsePact checkStockAvailable(PactDslWithProvider builder) {
         return builder
                 .given("PROD-001 has 100 units in stock")
@@ -58,6 +60,6 @@ class OrderServiceInventoryContractTest {
         return Feign.builder()
                 .contract(contract)
                 .decoder(new JacksonDecoder())
-                .target(InventoryClient.class, baseUrl);
+                .target(InventoryClient.class, baseUrl + "/api/v1/inventory");
     }
 }

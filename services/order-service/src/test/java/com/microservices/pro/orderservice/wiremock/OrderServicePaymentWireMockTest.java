@@ -5,21 +5,47 @@ import com.microservices.pro.orderservice.dto.OrderRequest;
 import com.microservices.pro.orderservice.dto.OrderResponse;
 import com.microservices.pro.orderservice.dto.StockCheckResponse;
 import com.microservices.pro.orderservice.service.OrderService;
+import com.github.tomakehurst.wiremock.WireMockServer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureWireMock(port = 0)
-@TestPropertySource(properties = "payment.service.url=http://localhost:${wiremock.server.port}/api/payments")
 class OrderServicePaymentWireMockTest {
+
+    private static final WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
+
+    @BeforeAll
+    static void startWireMock() {
+        wireMock.start();
+        configureFor("localhost", wireMock.port());
+    }
+
+    @AfterAll
+    static void stopWireMock() {
+        wireMock.stop();
+    }
+
+    @DynamicPropertySource
+    static void paymentUrl(DynamicPropertyRegistry registry) {
+        registry.add("payment.service.url", () -> "http://localhost:" + wireMock.port() + "/api/payments");
+    }
+
+    @BeforeEach
+    void resetStubs() {
+        wireMock.resetAll();
+    }
 
     @Autowired
     private OrderService orderService;
