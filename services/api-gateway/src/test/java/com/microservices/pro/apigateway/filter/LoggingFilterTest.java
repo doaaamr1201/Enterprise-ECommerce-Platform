@@ -1,52 +1,41 @@
 package com.microservices.pro.apigateway.filter;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.core.Ordered;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import reactor.core.publisher.Mono;
 
-import java.io.IOException;
-
-import static org.mockito.Mockito.times;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class LoggingFilterTest {
+class LoggingFilterTest {
 
     private LoggingFilter loggingFilter;
-    private HttpServletRequest request;
-    private HttpServletResponse response;
-    private FilterChain chain;
+    private GatewayFilterChain chain;
 
     @BeforeEach
     void setUp() {
         loggingFilter = new LoggingFilter();
-        request = Mockito.mock(HttpServletRequest.class);
-        response = Mockito.mock(HttpServletResponse.class);
-        chain = Mockito.mock(FilterChain.class);
+        chain = mock(GatewayFilterChain.class);
     }
 
     @Test
-    void doFilter_shouldPassRequestToNextFilterInChain() throws IOException, ServletException {
-        when(request.getMethod()).thenReturn("GET");
-        when(request.getRequestURI()).thenReturn("/api/products");
+    void filter_shouldPassRequestToNextFilterInChain() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/products"));
+        when(chain.filter(exchange)).thenReturn(Mono.empty());
 
-        loggingFilter.doFilter(request, response, chain);
+        loggingFilter.filter(exchange, chain).block();
 
-        verify(chain, times(1)).doFilter(request, response);
+        verify(chain).filter(exchange);
     }
 
     @Test
-    void doFilter_shouldReadMethodAndPathFromRequest() throws IOException, ServletException {
-        when(request.getMethod()).thenReturn("POST");
-        when(request.getRequestURI()).thenReturn("/api/products");
-
-        loggingFilter.doFilter(request, response, chain);
-
-        verify(request).getMethod();
-        verify(request).getRequestURI();
+    void getOrder_shouldRunBeforeEveryOtherFilter() {
+        assertThat(loggingFilter.getOrder()).isEqualTo(Ordered.HIGHEST_PRECEDENCE);
     }
 }
