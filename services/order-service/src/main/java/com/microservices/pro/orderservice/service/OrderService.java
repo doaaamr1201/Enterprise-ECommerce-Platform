@@ -5,7 +5,7 @@ import com.microservices.pro.orderservice.client.PaymentClient;
 import com.microservices.pro.orderservice.dto.OrderRequest;
 import com.microservices.pro.orderservice.dto.OrderResponse;
 import com.microservices.pro.orderservice.dto.StockCheckResponse;
-import feign.FeignException;
+import com.microservices.pro.orderservice.exception.InsufficientStockException;
 import io.github.resilience4j.bulkhead.BulkheadFullException;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -14,6 +14,8 @@ import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
@@ -41,31 +43,30 @@ public class OrderService {
     @Retry(name = "paymentService")
     public CompletableFuture<OrderResponse> createOrder(OrderRequest request) {
 
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+
         return CompletableFuture.supplyAsync(() -> {
-
-            // 1. Check inventory
+            RequestContextHolder.setRequestAttributes(requestAttributes);
             try {
-                StockCheckResponse stock = inventoryClient.checkStock(
-                        request.productId(),
-                        request.quantity()
-                );
+                return placeOrder(request);
+            } finally {
+                RequestContextHolder.resetRequestAttributes();
+            }
+        });
+    }
 
-                if (!stock.available()) {
-                    log.warn(
-                            "[ORDER] Insufficient stock for product: {}",
-                            request.productId()
-                    );
+    private OrderResponse placeOrder(OrderRequest request) {
 
-                    return new OrderResponse(
-                            "REJECTED",
-                            "Insufficient stock"
-                    );
-                }
+        // 1. Check inventory
+        try {
+            StockCheckResponse stock = inventoryClient.checkStock(
+                    request.productId(),
+                    request.quantity()
+            );
 
-            } catch (FeignException.Conflict ex) {
-
+            if (!stock.available()) {
                 log.warn(
-                        "[ORDER] Inventory unavailable for product: {}. Remaining stock: 0",
+                        "[ORDER] Insufficient stock for product: {}",
                         request.productId()
                 );
 
@@ -75,17 +76,29 @@ public class OrderService {
                 );
             }
 
-            // 2. Process payment only when stock is available
-            String result = paymentClient.processPayment(request);
+        } catch (InsufficientStockException ex) {
 
-            log.info("[ORDER] Payment succeeded: {}", result);
-
-            // 3. Confirm order
-            return new OrderResponse(
-                    "CONFIRMED",
-                    result
+            log.warn(
+                    "[ORDER] Inventory unavailable for product: {}. Remaining stock: 0",
+                    request.productId()
             );
-        });
+
+            return new OrderResponse(
+                    "REJECTED",
+                    "Insufficient stock"
+            );
+        }
+
+        // 2. Process payment only when stock is available
+        String result = paymentClient.processPayment(request);
+
+        log.info("[ORDER] Payment succeeded: {}", result);
+
+        // 3. Confirm order
+        return new OrderResponse(
+                "CONFIRMED",
+                result
+        );
     }
 
     public CompletableFuture<OrderResponse> paymentFallback(
