@@ -1,33 +1,29 @@
 package com.microservices.pro.apigateway.filter;
 
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
 
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class LoggingFilter implements Filter {
+public class LoggingFilter implements GlobalFilter, Ordered {
 
     private static final Logger log = LoggerFactory.getLogger(LoggingFilter.class);
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        log.info("[GATEWAY] {} {}",
+                exchange.getRequest().getMethod(),
+                exchange.getRequest().getURI().getPath());
+        return chain.filter(exchange);
+    }
 
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
-
-        log.info("[GATEWAY] {} {}", httpRequest.getMethod(), httpRequest.getRequestURI());
-
-        chain.doFilter(request, response);
+    @Override
+    public int getOrder() {
+        return Ordered.HIGHEST_PRECEDENCE;
     }
 }
