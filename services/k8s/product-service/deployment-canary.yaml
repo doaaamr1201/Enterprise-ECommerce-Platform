@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service-canary
+  namespace: ecommerce
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: product-service
+      track: canary
+  template:
+    metadata:
+      labels:
+        app: product-service
+        track: canary
+    spec:
+      containers:
+        - name: product-service
+          image: ghcr.io/YOUR_GITHUB_OWNER/YOUR_REPOSITORY/product-service:sha-NEW
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: redis.host
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: eureka.url

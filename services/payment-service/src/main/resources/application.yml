@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: payment-service
+
+payment:
+  failure-rate: 50      # نسبة الفشل % — نقدر نغيرها من غير compile
+  delay-ms: 0           # لو عايزين نحاكي بطء
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

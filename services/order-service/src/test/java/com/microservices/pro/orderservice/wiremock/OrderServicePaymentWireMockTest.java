@@ -1,0 +1,87 @@
+package com.microservices.pro.orderservice.wiremock;
+
+import com.microservices.pro.orderservice.client.InventoryClient;
+import com.microservices.pro.orderservice.dto.OrderRequest;
+import com.microservices.pro.orderservice.dto.OrderResponse;
+import com.microservices.pro.orderservice.dto.StockCheckResponse;
+import com.microservices.pro.orderservice.service.OrderService;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.test.context.TestPropertySource;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWireMock(port = 0)
+@TestPropertySource(properties = "payment.service.url=http://localhost:${wiremock.server.port}/api/payments")
+class OrderServicePaymentWireMockTest {
+
+    @Autowired
+    private OrderService orderService;
+
+    @MockitoBean
+    private InventoryClient inventoryClient;
+
+    private void stubInventory() {
+        when(inventoryClient.checkStock("PROD-001", 1))
+                .thenReturn(new StockCheckResponse("PROD-001", 1, true, 99));
+        when(inventoryClient.checkStock("PROD-002", 2))
+                .thenReturn(new StockCheckResponse("PROD-002", 2, true, 3));
+    }
+
+    @Test
+    void createOrder_returnsConfirmed_whenPaymentApproved() {
+        stubInventory();
+
+        stubFor(post(urlEqualTo("/api/payments"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"transactionId\":\"TXN-001\",\"status\":\"APPROVED\"}")));
+
+        OrderResponse response = orderService.createOrder(
+                new OrderRequest("PROD-001", 1, 100.0)
+        ).join();
+
+        assertThat(response.status()).isEqualTo("CONFIRMED");
+        assertThat(response.message()).isEqualTo(
+                "{\"transactionId\":\"TXN-001\",\"status\":\"APPROVED\"}");
+    }
+
+    @Test
+    void createOrder_returnsPending_whenPaymentServiceUnavailable() {
+        stubInventory();
+
+        stubFor(post(urlEqualTo("/api/payments"))
+                .willReturn(aResponse().withStatus(503)));
+
+        OrderResponse response = orderService.createOrder(
+                new OrderRequest("PROD-001", 1, 100.0)
+        ).join();
+
+        assertThat(response.status()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void createOrder_sendsCorrectPayload_toPaymentService() {
+        stubInventory();
+
+        stubFor(post(urlEqualTo("/api/payments"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("Payment successful")));
+
+        orderService.createOrder(
+                new OrderRequest("PROD-002", 2, 250.0)
+        ).join();
+
+        verify(postRequestedFor(urlEqualTo("/api/payments"))
+                .withRequestBody(matchingJsonPath("$.amount", equalTo("250.0"))));
+    }
+}

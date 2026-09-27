@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: ecommerce
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: product-service
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: product-service
+        track: stable
+    spec:
+      containers:
+        - name: product-service
+          image: ghcr.io/YOUR_GITHUB_OWNER/YOUR_REPOSITORY/product-service:sha-REPLACE_ME
+          ports:
+            - containerPort: 8081
+          env:
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: redis.host
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: eureka.url
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
