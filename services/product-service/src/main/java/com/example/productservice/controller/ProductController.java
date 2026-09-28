@@ -1,7 +1,10 @@
 package com.example.productservice.controller;
 
+import com.example.productservice.dto.ProductRequest;
 import com.example.productservice.model.Product;
-import com.example.productservice.service.ProductService;
+import com.example.productservice.projection.ProductSummaryProjection;
+import com.example.productservice.service.ProductCommandService;
+import com.example.productservice.service.ProductQueryService;
 import io.micrometer.core.annotation.Timed;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -14,44 +17,42 @@ import java.util.List;
 @RequestMapping("/api/products")
 public class ProductController {
 
-    private final ProductService productService;
+    private final ProductCommandService productCommandService;
+    private final ProductQueryService productQueryService;
 
-    public ProductController(ProductService productService) {
-        this.productService = productService;
+    public ProductController(ProductCommandService productCommandService, ProductQueryService productQueryService) {
+        this.productCommandService = productCommandService;
+        this.productQueryService = productQueryService;
     }
 
     @PostMapping
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product) {
-        Product created = productService.createProduct(product);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(productCommandService.create(request));
     }
 
     @Timed(value = "product.get.duration", description = "Time to load a product")
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return productService.getProductById(id)
+    public ResponseEntity<ProductSummaryProjection> getProductById(@PathVariable Long id) {
+        return productQueryService.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+    public ResponseEntity<List<ProductSummaryProjection>> getAllProducts() {
+        return ResponseEntity.ok(productQueryService.findAll());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @Valid @RequestBody Product product) {
-        product.setId(id);
-        Product updated = productService.updateProduct(product);
-        if (updated == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(updated);
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+        return productCommandService.update(id, request)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
-        if (productService.deleteProduct(id)) {
+        if (productCommandService.deleteById(id)) {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
