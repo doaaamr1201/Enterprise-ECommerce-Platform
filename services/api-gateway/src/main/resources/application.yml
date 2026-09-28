@@ -23,6 +23,12 @@ spring:
                     redis-rate-limiter.burstCapacity: 20
                     redis-rate-limiter.requestedTokens: 1
                     key-resolver: "#{@ipKeyResolver}"
+            - id: order-service
+              uri: lb://ORDER-SERVICE
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - AddResponseHeader=X-Platform, microservices-pro
 
 server:
   port: 8080
