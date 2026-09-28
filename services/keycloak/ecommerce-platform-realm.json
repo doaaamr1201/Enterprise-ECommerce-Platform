@@ -1,0 +1,39 @@
+{
+  "realm": "ecommerce-platform",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      { "name": "CUSTOMER" },
+      { "name": "ADMIN" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "gateway",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "gateway-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:8080/login/oauth2/code/keycloak"],
+      "webOrigins": ["http://localhost:8080"]
+    }
+  ],
+  "users": [
+    {
+      "username": "customer1",
+      "email": "customer1@example.com",
+      "emailVerified": true,
+      "firstName": "Customer",
+      "lastName": "One",
+      "enabled": true,
+      "credentials": [
+        { "type": "password", "value": "customer1", "temporary": false }
+      ],
+      "realmRoles": ["CUSTOMER"]
+    }
+  ]
+}
