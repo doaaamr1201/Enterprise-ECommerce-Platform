@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/YOUR_GITHUB_OWNER/YOUR_REPOSITORY.git
+    repoURL: https://github.com/doaaamr1201/Enterprise-ECommerce-Platform.git
     targetRevision: main
     path: services/k8s/product-service
   destination:

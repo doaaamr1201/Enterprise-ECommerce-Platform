@@ -17,10 +17,15 @@ spec:
     spec:
       containers:
         - name: product-service
-          image: ghcr.io/YOUR_GITHUB_OWNER/YOUR_REPOSITORY/product-service:sha-REPLACE_ME
+          image: ghcr.io/doaaamr1201/enterprise-ecommerce-platform/product-service:latest
           ports:
             - containerPort: 8081
           env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: product-config
+                  key: datasource.url
             - name: SPRING_DATA_REDIS_HOST
               valueFrom:
                 configMapKeyRef:
