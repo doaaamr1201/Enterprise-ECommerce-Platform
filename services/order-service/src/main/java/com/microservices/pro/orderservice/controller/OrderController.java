@@ -8,12 +8,14 @@ import com.microservices.pro.orderservice.saga.OrderSagaOrchestrator;
 import com.microservices.pro.orderservice.service.OrderService;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.concurrent.CompletableFuture;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -25,8 +27,11 @@ public class OrderController {
     @Timed(value = "order.create.duration", description = "Time to create an order")
     @PostMapping
     public CompletableFuture<ResponseEntity<OrderResponse>> createOrder(
-            @RequestBody OrderRequest request
+            @RequestBody OrderRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
+        log.info("[ORDER] Order request from user {} with roles {}", userId, userRole);
         return orderService.createOrderAsync(request)
                 .thenApply(ResponseEntity::ok);
     }

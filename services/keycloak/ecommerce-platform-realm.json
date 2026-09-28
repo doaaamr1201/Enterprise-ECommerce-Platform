@@ -3,8 +3,12 @@
   "enabled": true,
   "roles": {
     "realm": [
-      { "name": "CUSTOMER" },
-      { "name": "ADMIN" }
+      {
+        "name": "CUSTOMER"
+      },
+      {
+        "name": "ADMIN"
+      }
     ]
   },
   "clients": [
@@ -18,8 +22,23 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:8080/login/oauth2/code/keycloak"],
-      "webOrigins": ["http://localhost:8080"]
+      "redirectUris": [
+        "http://localhost:8080/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ]
+    },
+    {
+      "clientId": "order-service",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "order-service-dev-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
     }
   ],
   "users": [
@@ -31,9 +50,34 @@
       "lastName": "One",
       "enabled": true,
       "credentials": [
-        { "type": "password", "value": "customer1", "temporary": false }
+        {
+          "type": "password",
+          "value": "customer1",
+          "temporary": false
+        }
       ],
-      "realmRoles": ["CUSTOMER"]
+      "realmRoles": [
+        "CUSTOMER"
+      ]
+    },
+    {
+      "username": "admin1",
+      "email": "admin1@example.com",
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "One",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ADMIN",
+        "CUSTOMER"
+      ]
     }
   ]
 }
