@@ -37,15 +37,21 @@ The payment URL was made configurable with:
 
 The test overrides it to WireMock's random port.
 
-## 4) Important note about Chaos
-The supplied docker-compose currently starts Kafka and Redis only.
-It does not contain `inventory-service`, `order-service`, or `payment-service`.
-So the PDF's exact command:
+## 4) Chaos
+`docker-compose.yml` now runs every service (Session 9), and the gateway routes `/api/orders/**`.
+`OrderServicePaymentWireMockTest.createOrder_returnsPending_whenInventoryServiceIsDown` checks the same hypothesis in code.
+
+From the `services` folder, with the platform running (`docker compose up -d`):
 
 ```powershell
 docker compose stop inventory-service
 ```
 
-cannot work with the supplied compose file until those services are containerized and added to compose.
+`POST http://localhost:8080/api/orders` (with a Bearer token) now returns `PENDING`, not 500, and
+`GET http://localhost:8082/actuator/circuitbreakers` shows `paymentService` OPEN after repeated failures.
 
-For the code-level Session 11 lab, Pact + WireMock are the implemented parts in this package.
+```powershell
+docker compose start inventory-service
+```
+
+After the circuit breaker closes again, the same order returns `CONFIRMED`.

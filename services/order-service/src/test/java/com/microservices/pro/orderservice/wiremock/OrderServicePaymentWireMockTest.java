@@ -4,6 +4,7 @@ import com.microservices.pro.orderservice.client.InventoryClient;
 import com.microservices.pro.orderservice.dto.OrderRequest;
 import com.microservices.pro.orderservice.dto.OrderResponse;
 import com.microservices.pro.orderservice.dto.StockCheckResponse;
+import com.microservices.pro.orderservice.exception.ServiceUnavailableException;
 import com.microservices.pro.orderservice.service.OrderService;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.AfterAll;
@@ -109,5 +110,18 @@ class OrderServicePaymentWireMockTest {
 
         verify(postRequestedFor(urlEqualTo("/api/payments"))
                 .withRequestBody(matchingJsonPath("$.amount", equalTo("250.0"))));
+    }
+
+    @Test
+    void createOrder_returnsPending_whenInventoryServiceIsDown() {
+        when(inventoryClient.checkStock("PROD-001", 1))
+                .thenThrow(new ServiceUnavailableException("Inventory unavailable"));
+
+        OrderResponse response = orderService.createOrderAsync(
+                new OrderRequest("PROD-001", 1, 100.0)
+        ).join();
+
+        assertThat(response.status()).isEqualTo("PENDING");
+        verify(0, postRequestedFor(urlEqualTo("/api/payments")));
     }
 }
