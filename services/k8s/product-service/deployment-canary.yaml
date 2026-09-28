@@ -36,3 +36,22 @@ spec:
                 configMapKeyRef:
                   name: product-config
                   key: eureka.url
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: product-secrets
+                  key: DB_PASSWORD
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 3
