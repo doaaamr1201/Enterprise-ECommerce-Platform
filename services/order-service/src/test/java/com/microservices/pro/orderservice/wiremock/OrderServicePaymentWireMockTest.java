@@ -21,7 +21,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "spring.kafka.listener.auto-startup=false")
 class OrderServicePaymentWireMockTest {
 
     private static final WireMockServer wireMock = new WireMockServer(wireMockConfig().dynamicPort());
@@ -70,7 +70,7 @@ class OrderServicePaymentWireMockTest {
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"transactionId\":\"TXN-001\",\"status\":\"APPROVED\"}")));
 
-        OrderResponse response = orderService.createOrder(
+        OrderResponse response = orderService.createOrderAsync(
                 new OrderRequest("PROD-001", 1, 100.0)
         ).join();
 
@@ -86,7 +86,7 @@ class OrderServicePaymentWireMockTest {
         stubFor(post(urlEqualTo("/api/payments"))
                 .willReturn(aResponse().withStatus(503)));
 
-        OrderResponse response = orderService.createOrder(
+        OrderResponse response = orderService.createOrderAsync(
                 new OrderRequest("PROD-001", 1, 100.0)
         ).join();
 
@@ -103,7 +103,7 @@ class OrderServicePaymentWireMockTest {
                         .withHeader("Content-Type", "application/json")
                         .withBody("Payment successful")));
 
-        orderService.createOrder(
+        orderService.createOrderAsync(
                 new OrderRequest("PROD-002", 2, 250.0)
         ).join();
 
