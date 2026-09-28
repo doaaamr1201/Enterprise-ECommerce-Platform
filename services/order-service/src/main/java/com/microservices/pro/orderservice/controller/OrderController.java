@@ -4,6 +4,7 @@ import com.microservices.pro.orderservice.dto.OrderRequest;
 import com.microservices.pro.orderservice.dto.OrderResponse;
 import com.microservices.pro.orderservice.dto.OrderStatusResponse;
 import com.microservices.pro.orderservice.dto.SagaOrderResponse;
+import com.microservices.pro.orderservice.saga.OrderSagaOrchestrator;
 import com.microservices.pro.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import java.util.concurrent.CompletableFuture;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderSagaOrchestrator orderSagaOrchestrator;
 
     @PostMapping
     public CompletableFuture<ResponseEntity<OrderResponse>> createOrder(
@@ -34,6 +36,15 @@ public class OrderController {
     ) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(orderService.createOrder(request, customerId));
+    }
+
+    @PostMapping("/saga")
+    public ResponseEntity<SagaOrderResponse> createOrderWithOrchestration(
+            @RequestBody OrderRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) String customerId
+    ) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body(orderSagaOrchestrator.startSaga(request, customerId));
     }
 
     @GetMapping("/{orderId}/status")

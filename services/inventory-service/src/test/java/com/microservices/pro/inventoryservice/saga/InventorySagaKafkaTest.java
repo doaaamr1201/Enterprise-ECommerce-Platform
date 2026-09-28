@@ -32,7 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
         "eureka.client.enabled=false"
 })
-@EmbeddedKafka(partitions = 1, topics = {SagaTopics.ORDER_EVENTS, SagaTopics.INVENTORY_EVENTS, SagaTopics.PAYMENT_EVENTS})
+@EmbeddedKafka(partitions = 1, topics = {SagaTopics.ORDER_EVENTS, SagaTopics.INVENTORY_EVENTS, SagaTopics.PAYMENT_EVENTS,
+        SagaTopics.SAGA_COMMANDS, SagaTopics.SAGA_RESULTS})
 class InventorySagaKafkaTest {
 
     @Autowired
@@ -43,22 +44,23 @@ class InventorySagaKafkaTest {
 
     private KafkaTemplate<String, String> rawProducer;
     private Consumer<String, String> inventoryEvents;
+    private Consumer<String, String> sagaResults;
 
     @BeforeEach
     void setUp() {
         rawProducer = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
                 KafkaTestUtils.producerProps(broker), new StringSerializer(), new StringSerializer()));
-        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "reader-" + UUID.randomUUID(), false);
-        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-        inventoryEvents = new DefaultKafkaConsumerFactory<>(
-                consumerProps, new StringDeserializer(), new StringDeserializer()).createConsumer();
+        inventoryEvents = latestReader();
         broker.consumeFromAnEmbeddedTopic(inventoryEvents, SagaTopics.INVENTORY_EVENTS);
+        sagaResults = latestReader();
+        broker.consumeFromAnEmbeddedTopic(sagaResults, SagaTopics.SAGA_RESULTS);
         listenerRegistry.getListenerContainers().forEach(container -> ContainerTestUtils.waitForAssignment(container, 1));
     }
 
     @AfterEach
     void tearDown() {
         inventoryEvents.close();
+        sagaResults.close();
     }
 
     @Test
@@ -85,6 +87,35 @@ class InventorySagaKafkaTest {
         assertThat(released.value()).contains("\"orderId\":\"ORD-K2\"");
     }
 
+    @Test
+    void reserveCommandAfterAPaymentCommand_shouldIgnoreThePaymentCommandAndReportInventoryResult() {
+        send(SagaTopics.SAGA_COMMANDS, "ORD-K3", "processPaymentCommand", "{\"orderId\":\"ORD-K3\",\"amount\":10.0}");
+        send(SagaTopics.SAGA_COMMANDS, "ORD-K3", "reserveInventoryCommand",
+                "{\"orderId\":\"ORD-K3\",\"productId\":\"PROD-001\",\"quantity\":1}");
+
+        ConsumerRecord<String, String> result = awaitRecord(sagaResults, "ORD-K3", "inventoryResult");
+
+        assertThat(result.value()).contains("\"success\":true");
+    }
+
+    @Test
+    void releaseCommand_shouldReportInventoryReleased() {
+        send(SagaTopics.SAGA_COMMANDS, "ORD-K4", "reserveInventoryCommand",
+                "{\"orderId\":\"ORD-K4\",\"productId\":\"PROD-001\",\"quantity\":1}");
+        awaitRecord(sagaResults, "ORD-K4", "inventoryResult");
+
+        send(SagaTopics.SAGA_COMMANDS, "ORD-K4", "releaseInventoryCommand", "{\"orderId\":\"ORD-K4\"}");
+
+        awaitRecord(sagaResults, "ORD-K4", "inventoryReleased");
+    }
+
+    private Consumer<String, String> latestReader() {
+        Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "reader-" + UUID.randomUUID(), false);
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        return new DefaultKafkaConsumerFactory<>(
+                consumerProps, new StringDeserializer(), new StringDeserializer()).createConsumer();
+    }
+
     private void send(String topic, String key, String typeId, String json) {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, json);
         record.headers().add("__TypeId__", typeId.getBytes(StandardCharsets.UTF_8));
@@ -92,15 +123,19 @@ class InventorySagaKafkaTest {
     }
 
     private ConsumerRecord<String, String> awaitInventoryEvent(String orderId, String expectedTypeId) {
+        return awaitRecord(inventoryEvents, orderId, expectedTypeId);
+    }
+
+    private ConsumerRecord<String, String> awaitRecord(Consumer<String, String> consumer, String orderId, String expectedTypeId) {
         long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
         while (System.nanoTime() < deadline) {
-            for (ConsumerRecord<String, String> record : inventoryEvents.poll(Duration.ofMillis(500))) {
+            for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(500))) {
                 if (orderId.equals(record.key()) && expectedTypeId.equals(typeId(record))) {
                     return record;
                 }
             }
         }
-        throw new AssertionError("No " + expectedTypeId + " event for " + orderId + " on " + SagaTopics.INVENTORY_EVENTS);
+        throw new AssertionError("No " + expectedTypeId + " event for " + orderId);
     }
 
     private static String typeId(ConsumerRecord<String, String> record) {
