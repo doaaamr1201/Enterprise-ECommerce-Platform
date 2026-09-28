@@ -12,11 +12,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
+import java.util.List;
+import java.util.Optional;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.clearInvocations;
-import static org.mockito.Mockito.spy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @SpringJUnitConfig
 class ProductServiceCachingTest {
@@ -27,7 +32,7 @@ class ProductServiceCachingTest {
 
         @Bean
         ProductRepository productRepository() {
-            return spy(new ProductRepository());
+            return mock(ProductRepository.class);
         }
 
         @Bean
@@ -53,44 +58,53 @@ class ProductServiceCachingTest {
     private CacheManager cacheManager;
 
     @BeforeEach
-    void clearCache() {
+    void setUp() {
         cacheManager.getCache("products").clear();
-        clearInvocations(productRepository);
+        reset(productRepository);
+        when(productRepository.save(any(Product.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
     void getProductById_secondCall_shouldBeServedFromCache() {
-        Long id = productService.createProduct(new Product(null, "Laptop", 1500.0)).getId();
+        when(productRepository.findById(1L)).thenReturn(Optional.of(new Product(1L, "Laptop", 1500.0)));
 
-        productService.getProductById(id);
-        productService.getProductById(id);
+        productService.getProductById(1L);
+        productService.getProductById(1L);
 
-        verify(productRepository, times(1)).findById(id);
+        verify(productRepository, times(1)).findById(1L);
     }
 
     @Test
     void updateProduct_shouldEvictSoNextReadIsFresh() {
-        Long id = productService.createProduct(new Product(null, "Mouse", 200.0)).getId();
-        productService.getProductById(id);
+        when(productRepository.findById(1L))
+                .thenReturn(Optional.of(new Product(1L, "Mouse", 200.0)))
+                .thenReturn(Optional.of(new Product(1L, "Mouse", 150.0)));
+        when(productRepository.existsById(1L)).thenReturn(true);
+        productService.getProductById(1L);
 
-        productService.updateProduct(new Product(id, "Mouse", 150.0));
+        productService.updateProduct(new Product(1L, "Mouse", 150.0));
 
-        assertThat(productService.getProductById(id)).get().extracting(Product::getPrice).isEqualTo(150.0);
+        assertThat(productService.getProductById(1L)).get().extracting(Product::getPrice).isEqualTo(150.0);
     }
 
     @Test
     void getAllProducts_shouldBeCachedAndEvictedWhenAProductIsCreated() {
+        when(productRepository.findAll())
+                .thenReturn(List.of(new Product(1L, "Mouse", 200.0)))
+                .thenReturn(List.of(new Product(1L, "Mouse", 200.0), new Product(2L, "Keyboard", 300.0)));
         productService.getAllProducts();
         productService.getAllProducts();
         verify(productRepository, times(1)).findAll();
 
-        Product keyboard = productService.createProduct(new Product(null, "Keyboard", 300.0));
+        productService.createProduct(new Product(null, "Keyboard", 300.0));
 
-        assertThat(productService.getAllProducts()).extracting(Product::getId).contains(keyboard.getId());
+        assertThat(productService.getAllProducts()).extracting(Product::getName).contains("Keyboard");
     }
 
     @Test
     void getProductById_forMissingProduct_shouldReturnEmptyWithoutCachingIt() {
+        when(productRepository.findById(999L)).thenReturn(Optional.empty());
+
         assertThat(productService.getProductById(999L)).isEmpty();
         assertThat(productService.getProductById(999L)).isEmpty();
 
