@@ -16,13 +16,31 @@ spring:
       server:
         webflux:
           routes:
-            - id: product-service
+            - id: product-service-v1
+              uri: lb://PRODUCT-SERVICE
+              predicates:
+                - Path=/api/v1/products/**
+              filters:
+                - StripPrefix=0
+                - AddResponseHeader=X-Platform, microservices-pro
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+                    redis-rate-limiter.requestedTokens: 1
+                    key-resolver: "#{@ipKeyResolver}"
+            - id: product-service-legacy-redirect
               uri: lb://PRODUCT-SERVICE
               predicates:
                 - Path=/api/products/**
               filters:
-                - StripPrefix=0
+                - RewritePath=/api/products(?<segment>/?.*), /api/v1/products$\{segment}
                 - AddResponseHeader=X-Platform, microservices-pro
+                - AddResponseHeader=Deprecation, true
+                - name: AddResponseHeader
+                  args:
+                    name: Sunset
+                    value: "Thu, 31 Dec 2026 00:00:00 GMT"
                 - name: RequestRateLimiter
                   args:
                     redis-rate-limiter.replenishRate: 10

@@ -42,7 +42,7 @@ class ProductControllerTest {
         when(productQueryService.findById(1L))
                 .thenReturn(Optional.of(new ProductSummaryProjection(1L, "Laptop", 999.99, "ELECTRONICS")));
 
-        mockMvc.perform(get("/api/products/1"))
+        mockMvc.perform(get("/api/v1/products/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("Laptop"))
@@ -51,11 +51,18 @@ class ProductControllerTest {
     }
 
     @Test
+    @DisplayName("Unversioned /api/products is no longer served by the service")
+    void unversionedPath_returns404() throws Exception {
+        mockMvc.perform(get("/api/products/1"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("GET /api/products/{id} returns 404 when not found")
     void getProduct_notFound_returns404() throws Exception {
         when(productQueryService.findById(99L)).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/products/99"))
+        mockMvc.perform(get("/api/v1/products/99"))
                 .andExpect(status().isNotFound());
     }
 
@@ -64,7 +71,7 @@ class ProductControllerTest {
     void createProduct_valid_returns201() throws Exception {
         when(productCommandService.create(any(ProductRequest.class))).thenReturn(new Product(7L, "Monitor", 399.99));
 
-        mockMvc.perform(post("/api/products")
+        mockMvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Monitor\",\"price\":399.99,\"category\":\"ELECTRONICS\"}"))
                 .andExpect(status().isCreated())
@@ -76,7 +83,7 @@ class ProductControllerTest {
     @Test
     @DisplayName("POST /api/products with missing name returns 400")
     void createProduct_missingName_returns400() throws Exception {
-        mockMvc.perform(post("/api/products")
+        mockMvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"price\":50}"))
                 .andExpect(status().isBadRequest());
@@ -90,7 +97,7 @@ class ProductControllerTest {
         when(productCommandService.create(any(ProductRequest.class)))
                 .thenThrow(new InvalidProductException("Price must be positive"));
 
-        mockMvc.perform(post("/api/products")
+        mockMvc.perform(post("/api/v1/products")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"Bad\",\"price\":-1}"))
                 .andExpect(status().isBadRequest());
