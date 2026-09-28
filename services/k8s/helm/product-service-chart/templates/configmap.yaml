@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-config
+  namespace: {{ .Values.namespace }}
+data:
+  datasource.url: {{ .Values.config.datasourceUrl | quote }}
+  redis.host: {{ .Values.config.redisHost | quote }}
+  eureka.url: {{ .Values.config.eurekaUrl | quote }}
