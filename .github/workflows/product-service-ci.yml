@@ -31,7 +31,8 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: mvn test -pl services/product-service -B
+        working-directory: services/product-service
+        run: mvn test -B
 
   build-and-push:
     name: Build & Push Docker Image
