@@ -25,7 +25,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.kafka.listener.auto-startup=false")
 class OrderServiceResilienceTest {
 
     @Autowired
@@ -56,7 +56,7 @@ class OrderServiceResilienceTest {
         });
 
         long start = System.nanoTime();
-        OrderResponse response = orderService.createOrder(request).join();
+        OrderResponse response = orderService.createOrderAsync(request).join();
         Duration elapsed = Duration.ofNanos(System.nanoTime() - start);
 
         assertThat(response.status()).isEqualTo("PENDING");
@@ -74,7 +74,7 @@ class OrderServiceResilienceTest {
                 .getBulkheadConfig().getMaxConcurrentCalls();
 
         List<CompletableFuture<OrderResponse>> orders = IntStream.range(0, 15)
-                .mapToObj(i -> orderService.createOrder(request))
+                .mapToObj(i -> orderService.createOrderAsync(request))
                 .toList();
         List<String> statuses = orders.stream().map(f -> f.join().status()).toList();
 
