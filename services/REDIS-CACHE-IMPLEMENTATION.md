@@ -7,7 +7,7 @@ Implemented in `product-service`:
 - Added Redis host/port configuration
 - Configured Redis as Spring Cache with 5-minute TTL
 - Added `@Cacheable("products")` to `getProductById` and `getAllProducts` (key `'all'`)
-- Added `@CacheEvict` to create, update and delete; update and delete also evict `'all'`
+- Session 18: writes publish `ProductChangedEvent`; `ProductCacheEvictionListener` evicts the product and `'all'` after the transaction commits
 - Added PUT `/api/v1/products/{id}` update endpoint
 - Added Redis service to the root `docker-compose.yml`
 
@@ -40,5 +40,5 @@ docker exec -it redis redis-cli KEYS "*"
 docker exec -it redis redis-cli TTL "products::1"
 ```
 
-5. Update the product with PUT `/api/v1/products/{id}`. The console prints `[CACHE EVICT]` and the product and `'all'` entries are evicted.
+5. Update the product with PUT `/api/v1/products/{id}`. The console prints `[CQRS] Cache evicted for product ... due to UPDATED` and the product and `'all'` entries are evicted.
 6. Call GET again. It loads from the repository and puts the fresh result back into Redis.
