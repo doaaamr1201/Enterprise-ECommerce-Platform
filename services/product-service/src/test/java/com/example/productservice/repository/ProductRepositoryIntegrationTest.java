@@ -1,6 +1,8 @@
 package com.example.productservice.repository;
 
+import com.example.productservice.model.Category;
 import com.example.productservice.model.Product;
+import com.example.productservice.projection.ProductSummaryProjection;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -36,6 +38,9 @@ class ProductRepositoryIntegrationTest {
     @Autowired
     private ProductRepository productRepository;
 
+    @Autowired
+    private CategoryRepository categoryRepository;
+
     @Test
     void save_andFindById_roundTrip() {
         Product saved = productRepository.save(new Product(null, "Laptop", 999.99));
@@ -57,5 +62,29 @@ class ProductRepositoryIntegrationTest {
         List<Product> cheap = productRepository.findByPriceLessThan(50);
 
         assertThat(cheap).extracting(Product::getName).containsExactly("Mouse");
+    }
+
+    @Test
+    void findSummaryById_flattensTheCategoryNameFromTheJoin() {
+        Category electronics = categoryRepository.save(new Category("ELECTRONICS"));
+        Product laptop = new Product(null, "Laptop", 999.99);
+        laptop.setCategoryId(electronics.getId());
+        Long id = productRepository.save(laptop).getId();
+
+        ProductSummaryProjection summary = productRepository.findSummaryById(id).orElseThrow();
+
+        assertThat(summary.categoryName()).isEqualTo("ELECTRONICS");
+        assertThat(summary.displayLabel()).isEqualTo("Laptop (ELECTRONICS)");
+    }
+
+    @Test
+    void findAllSummaries_keepsProductsWithoutACategory() {
+        productRepository.save(new Product(null, "Cable", 9.99));
+
+        assertThat(productRepository.findAllSummaries())
+                .anySatisfy(summary -> {
+                    assertThat(summary.name()).isEqualTo("Cable");
+                    assertThat(summary.categoryName()).isNull();
+                });
     }
 }
