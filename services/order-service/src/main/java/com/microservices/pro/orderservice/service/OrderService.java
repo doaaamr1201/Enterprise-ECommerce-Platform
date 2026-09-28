@@ -22,8 +22,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -84,16 +82,7 @@ public class OrderService {
     @Retry(name = "paymentService")
     public CompletableFuture<OrderResponse> createOrderAsync(OrderRequest request) {
 
-        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-
-        return CompletableFuture.supplyAsync(() -> {
-            RequestContextHolder.setRequestAttributes(requestAttributes);
-            try {
-                return placeOrder(request);
-            } finally {
-                RequestContextHolder.resetRequestAttributes();
-            }
-        });
+        return CompletableFuture.supplyAsync(() -> placeOrder(request));
     }
 
     private OrderResponse placeOrder(OrderRequest request) {

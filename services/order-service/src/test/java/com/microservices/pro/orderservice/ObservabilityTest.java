@@ -38,7 +38,7 @@ class ObservabilityTest {
         when(inventoryClient.checkStock("PROD-001", 1)).thenReturn(new StockCheckResponse("PROD-001", 1, true, 99));
         when(paymentClient.processPayment(any())).thenReturn("Payment successful");
 
-        orderController.createOrder(new OrderRequest("PROD-001", 1, 100.0)).join();
+        orderController.createOrder(new OrderRequest("PROD-001", 1, 100.0), "user-1", "CUSTOMER").join();
 
         Timer timer = meterRegistry.find("order.create.duration").timer();
         assertThat(timer).isNotNull();

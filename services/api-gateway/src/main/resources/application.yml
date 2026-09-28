@@ -1,6 +1,12 @@
 spring:
   application:
     name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8090/realms/ecommerce-platform
+          jwk-set-uri: http://localhost:8090/realms/ecommerce-platform/protocol/openid-connect/certs
   data:
     redis:
       host: localhost
@@ -37,9 +43,6 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka
-
-jwt:
-  secret: microservices-pro-course-secret-key-2024-minimum-256-bits
 
 management:
   endpoints:

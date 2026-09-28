@@ -18,12 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.microservices.pro.orderservice.model.OrderStatus;
 import com.microservices.pro.orderservice.repository.OrderRepository;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.math.BigDecimal;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
@@ -84,29 +80,6 @@ class OrderServiceTest {
 
         assertEquals("REJECTED", response.status());
         verifyNoInteractions(paymentClient);
-    }
-
-    @Test
-    void inventoryCallShouldSeeTheIncomingRequestSoTheJwtCanBeForwarded() {
-        OrderRequest request = new OrderRequest("PROD-001", 1, 250.0);
-        MockHttpServletRequest incoming = new MockHttpServletRequest();
-        incoming.addHeader("Authorization", "Bearer abc.def.ghi");
-        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(incoming));
-        AtomicReference<String> seenByInventoryCall = new AtomicReference<>();
-        when(inventoryClient.checkStock("PROD-001", 1)).thenAnswer(invocation -> {
-            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            seenByInventoryCall.set(attrs.getRequest().getHeader("Authorization"));
-            return new StockCheckResponse("PROD-001", 1, true, 99);
-        });
-        when(paymentClient.processPayment(request)).thenReturn("Payment successful");
-
-        try {
-            orderService.createOrderAsync(request).join();
-        } finally {
-            RequestContextHolder.resetRequestAttributes();
-        }
-
-        assertEquals("Bearer abc.def.ghi", seenByInventoryCall.get());
     }
 
     @Test

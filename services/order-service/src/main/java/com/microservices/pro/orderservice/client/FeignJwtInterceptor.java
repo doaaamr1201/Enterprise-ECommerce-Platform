@@ -1,22 +1,22 @@
 package com.microservices.pro.orderservice.client;
 
+import com.microservices.pro.orderservice.security.OrderServiceTokenClient;
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Component
 public class FeignJwtInterceptor implements RequestInterceptor {
 
+    private final OrderServiceTokenClient tokenClient;
+
+    public FeignJwtInterceptor(OrderServiceTokenClient tokenClient) {
+        this.tokenClient = tokenClient;
+    }
+
     @Override
     public void apply(RequestTemplate template) {
-        if (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs) {
-            String authHeader = attrs.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
-            if (authHeader != null) {
-                template.header(HttpHeaders.AUTHORIZATION, authHeader);
-            }
-        }
+        template.header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenClient.getAccessToken());
     }
 }
