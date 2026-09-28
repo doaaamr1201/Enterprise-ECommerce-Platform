@@ -23,6 +23,15 @@ public class ProductService {
         this.productRepository = productRepository;
     }
 
+    public int calcDiscount(String tier) {
+        return switch (tier) {
+            case "SILVER" -> 5;
+            case "GOLD" -> 10;
+            case "PLATINUM" -> 15;
+            default -> 0;
+        };
+    }
+
     @CacheEvict(value = "products", key = "'all'")
     public Product createProduct(Product product) {
         product.setId(null);
@@ -47,7 +56,11 @@ public class ProductService {
     })
     public boolean deleteProduct(Long id) {
         log.info("[CACHE EVICT] Invalidating cache for product {}", id);
-        return productRepository.deleteById(id);
+        if (!productRepository.existsById(id)) {
+            return false;
+        }
+        productRepository.deleteById(id);
+        return true;
     }
 
     @Caching(evict = {
@@ -55,7 +68,7 @@ public class ProductService {
             @CacheEvict(value = "products", key = "'all'")
     })
     public Product updateProduct(Product product) {
-        if (product.getId() == null || productRepository.findById(product.getId()).isEmpty()) {
+        if (product.getId() == null || !productRepository.existsById(product.getId())) {
             return null;
         }
         log.info("[CACHE EVICT] Invalidating cache for product {}", product.getId());
