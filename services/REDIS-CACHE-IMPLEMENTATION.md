@@ -5,9 +5,9 @@ Implemented in `product-service`:
 - Added `spring-boot-starter-cache`
 - Enabled caching with `@EnableCaching`
 - Added Redis host/port configuration
-- Configured Redis as Spring Cache with 10-minute TTL
-- Added `@Cacheable("products")` to `getProductById`
-- Added `@CacheEvict` to delete and update operations
+- Configured Redis as Spring Cache with 5-minute TTL
+- Added `@Cacheable("products")` to `getProductById` and `getAllProducts` (key `'all'`)
+- Added `@CacheEvict` to create, update and delete; update and delete also evict `'all'`
 - Added PUT `/api/products/{id}` update endpoint
 - Added Redis service to the root `docker-compose.yml`
 
@@ -31,7 +31,7 @@ Expected: `PONG`
 ## Test cache
 
 1. Create a product with POST `/api/products`.
-2. Call GET `/api/products/{id}` once. The console prints `CACHE MISS -> Loading product ... from repository`.
+2. Call GET `/api/products/{id}` once. The console prints `[CACHE MISS] Loading product ... from repository`.
 3. Call the same GET again. The repository method should not execute again because Spring Cache returns the cached value.
 4. Inspect Redis:
 
@@ -40,5 +40,5 @@ docker exec -it redis redis-cli KEYS "*"
 docker exec -it redis redis-cli TTL "products::1"
 ```
 
-5. Update the product with PUT `/api/products/{id}`. The product cache entry is evicted.
+5. Update the product with PUT `/api/products/{id}`. The console prints `[CACHE EVICT]` and the product and `'all'` entries are evicted.
 6. Call GET again. It loads from the repository and puts the fresh result back into Redis.
