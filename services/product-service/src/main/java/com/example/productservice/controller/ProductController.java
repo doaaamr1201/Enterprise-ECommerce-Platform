@@ -2,6 +2,7 @@ package com.example.productservice.controller;
 
 import com.example.productservice.model.Product;
 import com.example.productservice.service.ProductService;
+import io.micrometer.core.annotation.Timed;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @Timed(value = "product.get.duration", description = "Time to load a product")
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         return productService.getProductById(id)

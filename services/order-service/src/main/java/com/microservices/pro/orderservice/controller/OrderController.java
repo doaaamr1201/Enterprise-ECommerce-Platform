@@ -6,6 +6,7 @@ import com.microservices.pro.orderservice.dto.OrderStatusResponse;
 import com.microservices.pro.orderservice.dto.SagaOrderResponse;
 import com.microservices.pro.orderservice.saga.OrderSagaOrchestrator;
 import com.microservices.pro.orderservice.service.OrderService;
+import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,6 +22,7 @@ public class OrderController {
     private final OrderService orderService;
     private final OrderSagaOrchestrator orderSagaOrchestrator;
 
+    @Timed(value = "order.create.duration", description = "Time to create an order")
     @PostMapping
     public CompletableFuture<ResponseEntity<OrderResponse>> createOrder(
             @RequestBody OrderRequest request
