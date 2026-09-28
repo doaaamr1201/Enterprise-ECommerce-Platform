@@ -14,5 +14,5 @@ RUN apt-get update \
     && adduser --system --group spring
 USER spring
 COPY --from=builder /build/target/*.jar app.jar
-EXPOSE 8081
+EXPOSE 8761
 ENTRYPOINT ["java", "-jar", "app.jar"]
