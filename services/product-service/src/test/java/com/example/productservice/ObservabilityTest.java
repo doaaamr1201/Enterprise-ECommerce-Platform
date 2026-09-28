@@ -48,7 +48,7 @@ class ObservabilityTest {
     void timedEndpoint_shouldBeScrapableByPrometheus() throws Exception {
         Long id = productRepository.save(new Product(null, "Laptop", 999.99)).getId();
 
-        mockMvc.perform(get("/api/products/" + id)).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/products/" + id)).andExpect(status().isOk());
 
         mockMvc.perform(get("/actuator/prometheus"))
                 .andExpect(status().isOk())
@@ -57,7 +57,7 @@ class ObservabilityTest {
 
     @Test
     void logLinesWrittenDuringARequest_shouldBeJsonWithTheTraceId(CapturedOutput output) throws Exception {
-        mockMvc.perform(get("/api/products/424242")).andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/products/424242")).andExpect(status().isNotFound());
 
         String cacheMissLine = output.getOut().lines()
                 .filter(line -> line.contains("[CACHE MISS] Loading product 424242"))
